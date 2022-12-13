@@ -130,7 +130,7 @@ class Controller:
         self.current_offset = 0
         self.last_triggered = []
         self.encoder = 0
-        self.active_chordset = 0
+        self.active_chordset = 3
         self.current_group = cs.groups[0]
         self.scale = ["C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"]
         self.program = 0
@@ -146,6 +146,7 @@ class Controller:
         self.mixer_snap = 0
         self.shifting = 0
         self.plugin_picker_active = 0
+        self.msgqueue = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,]
 
     def update_maschine_touch_strip(self, data1, state):  # toggles LEDs between pitch, mod, perform and notes buttons
         for button in range(49, 53):
@@ -538,6 +539,7 @@ def OnControlChange(event):
 #----------------------------------------------------------------------------------------------------------------------
 
     if event.data1 == 84:  # CHORDS
+        print("Chords")
         for chordset in range(100, 108):
             device.midiOutMsg(176, 0, chordset, 0)
         for mode in range(81, 85):
@@ -991,7 +993,9 @@ def OnControlChange(event):
     # -----------------------------------------------------------------------------------------------------
     #   GROUPS
     # --------------------------------------------------------------------------------------------------------
+    print("Event.data1 Changed: " + str(event.data1))
     if 100 <= event.data1 <= 107:
+        print("Event.data1 Changed: " + str(event.data1))
         for group in range(100, 108):
             device.midiOutMsg(176, 0, group, 0)
         for channel in range(0, 16):
@@ -1004,6 +1008,7 @@ def OnControlChange(event):
             event.handled = True
             return
         elif controller.padmode == KEYBOARD:
+            print("Event.data1: " + str(event.data1))
             controller.current_group = cs.groups[event.data1 - 100]
             device.midiOutMsg(176, 0, event.data1, 4)
             controller.note_off()
@@ -1179,10 +1184,20 @@ def OnControlChange(event):
         event.handled = True
         return
 
+def getActiveChordset(code):
+    pass
+
+
 # --------------------------------------------------------------------------------------------------------
 #   NOTES
 # --------------------------------------------------------------------------------------------------------
-def OnNoteOn(event):
+def OnNoteOn(event):    
+    #print('----------------------')
+    #print('Active Chordset: ' + str(controller.active_chordset))
+    print(str(event.data1) + ' - ' + str(event.data2))            
+    #print('Event Data keys:' + str(len(cs.chdSet[controller.active_chordset])))
+    
+
     if controller.shifting == 1 and event.data2 != 0:
         if event.data1 == 0:
             general.undoUp()
@@ -1251,6 +1266,7 @@ def OnNoteOn(event):
             event.handled = True
             return
     elif controller.padmode == CHORDS:
+        event.data1 = event.data1 % 60
         if event.data2 != 0:
             for note in cs.chdSet[controller.active_chordset][event.data1]:
                 realnote = note + (controller.current_octave * 12) + controller.current_offset + 12
