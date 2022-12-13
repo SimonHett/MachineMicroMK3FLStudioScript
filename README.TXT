@@ -1,4 +1,4 @@
-MASCHINE MK3 SCRIPT for FL STUDIO MADE BY Aftalyfe
+MASCHINE MK3 SCRIPT for FL STUDIO MADE BY Aftalyfe EXTENDED BY Simon Hett
 
 REQUIREMENTS:
 - FL Studio 20.8.3 version or higher
