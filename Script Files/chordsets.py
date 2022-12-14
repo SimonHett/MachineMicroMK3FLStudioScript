@@ -297,14 +297,14 @@ chdSet = [min1, min2, min3, min4, maj1, maj2, maj3, maj4]
 #---------------------------------------------------------------------------------------------------------
 # CHANGE THE NOTES INSIDE THE BRACKETS AS YOU PLEASE, JUST MAKE SURE THAT THERE IS EXACTLY 16 NOTES IN EACH GROUP!
 
-group1 = [C4, D4, Gs4, As4, Cs4, E4, A4, F4, B4, Fs4, Ds4, G4, C5, Cs5, D5, G5] # BATTERY
+group1 = [C5, D5, E5, F5, G5, A5, B5, C6, D6, E6, F6, G6, A6, B6, C7, D7]       # MAJOR
 group2 = [C5, D5, Ds5, F5, G5, Gs5, As5, C6, D6, Ds6, F6, G6, Gs6, As6, C7, D7] # MINOR
-group3 = [C5, D5, E5, F5, G5, A5, B5, C6, D6, E6, F6, G6, A6, B6, C7, D7]       # MAJOR
-group4 = [Cs4, C4, Fs4, As7, E4, D4, As4, Gs4, C5, B4, A4, G4, Cs5, G5, Ds5, F5]# FPC
-group5 = [C5, Cs5, D5, Ds5, E5, F5, Fs5, G5, Gs5, A5, As5, B5, C6, Cs6, D6, Ds6]# CHROMATIC
-group6 = [C5, Cs5, E5, F5, G5, Gs5, B5, C6, Cs6, E6, F6, G6, Gs6, B6, C7, Cs7]# ARABIC
+group3 = [C5, Cs5, D5, Ds5, E5, F5, Fs5, G5, Gs5, A5, As5, B5, C6, Cs6, D6, Ds6]# CHROMATIC
+group4 = [C5, Cs5, E5, F5, G5, Gs5, B5, C6, Cs6, E6, F6, G6, Gs6, B6, C7, Cs7]# ARABIC
+group5 = [Cs4, C4, Fs4, As4, E4, D4, As4, Gs4, C5, B4, A4, G4, Cs5, G5, Ds5, F5]# FPC
+group6 = [C5, Cs5, D5, Ds5, E5, F5, Fs5, G5, Gs5, A5, As5, B5, C6, Cs6, D6, Ds6]# CUSTOM
 group7 = [C5, Cs5, D5, Ds5, E5, F5, Fs5, G5, Gs5, A5, As5, B5, C6, Cs6, D6, Ds6]# CUSTOM
-group8 = [C5, Cs5, D5, Ds5, E5, F5, Fs5, G5, Gs5, A5, As5, B5, C6, Cs6, D6, Ds6]# CUSTOM
+group8 = [C4, D4, Gs4, As4, Cs4, E4, A4, F4, B4, Fs4, Ds4, G4, C5, Cs5, D5, G5] # BATTERY
 
 # DON'T CHANGE THIS!
 groups = [group1, group2, group3, group4, group5, group6, group7, group8]
