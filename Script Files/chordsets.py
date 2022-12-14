@@ -158,9 +158,9 @@ min1 = [ # MINOR 1
 
 min2 = [ # MINOR 2
     [C4, G4, C5, Ds5],
-    [B3, G4, B4, Ds5],
+    [F4, C5, Ds5, Gs5],
     [As3, G4, C5, Ds5],
-    [G3, B4, D5, G5],
+    [Gs3, Gs4, C5, Ds5],
     [Gs3, C5, Ds5, G5],
     [Ds4, As4, Ds5, G5],
     [G3, As4, D5, G5],
@@ -170,7 +170,7 @@ min2 = [ # MINOR 2
     [G3, C5, Ds5, G5],
     [G3, B4, D5, G5],
     [C4, C5, Ds5, G5],
-    [F3, D4, F5, Gs5],
+    [As3, F4, As5, D5],
     [As3, D4, F5, As5],
     [As3, D4, D5, G5],
 ]
@@ -195,9 +195,9 @@ min3 = [ # SYNTHWAVE
 ]
 
 min4 = [ # EPIC
-    [Cs3, D4, G4, As4],
-    [F3, C4, F4, A4],
     [G3, D4, G4, As4],
+    [F3, C4, F4, A4],
+    [Ds3, Ds4, G4, As4],
     [As3, F4, As4, D5],
     [D3, A3, D4, F4],
     [C3, G3, C4, Ds4],
