@@ -177,9 +177,6 @@ class Controller:
         self.plugin_picker_active = 0
         self.msgbuffer = MessageBuffer(16)
         self.highlightcode = {
-            -3:     Red2,
-            -2:     Yellow2,
-            -1:     Green2,
             0:      Black0,
             1:      Green2,
             2:      Yellow2,
@@ -297,11 +294,11 @@ def refresh_channels():
 
 def refresh_keyboard():
     for channel in range(16):
-        device.midiOutMsg(144, 0, channel, KEYBOARD_COLOR)
+        device.midiOutMsg(144, 0, channel + 16*cs.groups.index(controller.current_group), KEYBOARD_COLOR)
 
 def refresh_chords():
     for channel in range(16):
-        device.midiOutMsg(144, 0, channel, CHORDS_COLOR)
+        device.midiOutMsg(144, 0, channel + 16*controller.active_chordset, CHORDS_COLOR)
 
 def refresh_chan_screen():
     # refresh channel number
@@ -318,6 +315,18 @@ def refresh_chan_screen():
     #print(value)
     device.midiOutMsg(176, 0, 76, round(((value + 256) / 512) * 127) - 1)
     return
+
+def refresh_controls():
+    #Octave Buttons
+    button_id_on  = 115 if controller.current_octave < 0 else 116
+    button_id_off = 116 if controller.current_octave < 0 else 115               
+    device.midiOutMsg(176, 0, button_id_on, controller.highlightcode[abs(controller.current_octave)])
+    device.midiOutMsg(176, 0, button_id_off, 0)
+    #Semitone Buttons
+    button_id_on  = 113 if controller.current_offset < 0 else 114
+    button_id_off = 114 if controller.current_offset < 0 else 113               
+    device.midiOutMsg(176, 0, button_id_on, 2 + abs(controller.current_offset*4))
+    device.midiOutMsg(176, 0, button_id_off, 0)    
 
 def refresh_grid():
     lower_grid = controller.stepchannel * 16
@@ -1083,58 +1092,39 @@ def OnControlChange(event):
                 device.midiOutMsg(176, 0, event.data1, 127)
                 controller.current_octave += 1
         
-        button_id_on = 115 if controller.current_octave < 0 else 116
-        button_id_off = 116 if controller.current_octave < 0 else 115
-        controller.note_off()        
-        device.midiOutMsg(176, 0, button_id_on, controller.highlightcode[controller.current_octave])
-        device.midiOutMsg(176, 0, button_id_off, 0)
-        ui.setHintMsg("Current octave: " + str(controller.current_octave))
-        event.handled = True
-        return
-    if event.data1 == 28 and controller.current_offset != -11:
         if event.data2 != 0:
-            device.midiOutMsg(176, 0, event.data1, 127)
-            controller.current_offset -= 1
-            event.handled = True
-            controller.note_off()
-            ui.setHintMsg("Root note: " + controller.scale[controller.current_offset])
-            return
-        device.midiOutMsg(176, 0, event.data1, 0)
-        event.handled = True
-        return
-    elif event.data1 == 28 and controller.current_octave >= -2:
-        if event.data2 != 0:
-            device.midiOutMsg(176, 0, event.data1, 127)
-            controller.current_offset = 0
-            controller.current_octave -= 1
-            event.handled = True
-            controller.note_off()
+            refresh_controls()
             ui.setHintMsg("Current octave: " + str(controller.current_octave))
-            return
-        device.midiOutMsg(176, 0, event.data1, 0)
+            controller.note_off() 
         event.handled = True
         return
-    if event.data1 == 29 and controller.current_offset != 11:
+    print("current_offset semitone: " + str(controller.current_offset))
+    if event.data1 in [113, 114]:
+        octave_changed = False
+        if event.data1 == 113 and controller.current_offset > -11:
+            if event.data2 != 0:
+                controller.current_offset -= 1
+        elif event.data1 == 113 and controller.current_octave >= -2:
+            if event.data2 != 0:
+                controller.current_offset = 0
+                controller.current_octave -= 1
+                octave_changed = True
+        if event.data1 == 114 and controller.current_offset < 11:
+            if event.data2 != 0:
+                controller.current_offset += 1
+        elif event.data1 == 114 and controller.current_octave <= 2:
+            if event.data2 != 0:
+                controller.current_offset = 0
+                controller.current_octave += 1
+                octave_changed = True
         if event.data2 != 0:
-            device.midiOutMsg(176, 0, event.data1, 127)
-            controller.current_offset += 1
-            event.handled = True
-            controller.note_off()
+            refresh_controls()
             ui.setHintMsg("Root note: " + controller.scale[controller.current_offset])
-            return
-        device.midiOutMsg(176, 0, event.data1, 0)
-        event.handled = True
-        return
-    elif event.data1 == 29 and controller.current_octave <= 2:
-        if event.data2 != 0:
-            device.midiOutMsg(176, 0, event.data1, 127)
-            controller.current_offset = 0
-            controller.current_octave += 1
-            event.handled = True
-            controller.note_off()
-            ui.setHintMsg("Current octave: " + str(controller.current_octave))
-            return
-        device.midiOutMsg(176, 0, event.data1, 0)
+            
+            controller.note_off() 
+
+        
+
         event.handled = True
         return
 # --------------------------------------------------------------------------------------------------------
@@ -1246,6 +1236,7 @@ def CheckPageChange(event):
             controller.current_group = cs.groups[range_data]
             print("Controller Group Changed: " + str(range_data + 1))
             controller.note_off()
+            refresh_keyboard()
             event.handled = True
 
     elif controller.padmode == CHORDS:
@@ -1253,6 +1244,7 @@ def CheckPageChange(event):
             controller.active_chordset = range_data
             print("Controller Chordset Changed: " + str(range_data + 1))
             controller.note_off()
+            refresh_chords()
             event.handled = True
 
     elif controller.padmode == STEP:
