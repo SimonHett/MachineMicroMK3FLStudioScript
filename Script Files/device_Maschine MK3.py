@@ -99,6 +99,10 @@ PLUGIN_COLOR = Violet1
 PLUGIN_HIGHLIGHTED = Violet2
 CHANNEL_COLOR = Green0
 CHANNEL_HIGHLIGHTED = Green2
+CHORDS_COLOR = Cyan1
+CHORDS_HIGHLIGHTED = Cyan3
+KEYBOARD_COLOR = Lime1
+KEYBOARD_HIGHLIGHTED = Lime3
 
 # reverse engineered codes for channel rack colors
 WHITE = -1
@@ -290,6 +294,14 @@ def refresh_channels():
             device.midiOutMsg(144, 0, channel, PLUGIN_HIGHLIGHTED)
         else:
             device.midiOutMsg(144, 0, channel, CHANNEL_HIGHLIGHTED)
+
+def refresh_keyboard():
+    for channel in range(16):
+        device.midiOutMsg(144, 0, channel, KEYBOARD_COLOR)
+
+def refresh_chords():
+    for channel in range(16):
+        device.midiOutMsg(144, 0, channel, CHORDS_COLOR)
 
 def refresh_chan_screen():
     # refresh channel number
@@ -577,6 +589,8 @@ def OnControlChange(event):
             device.midiOutMsg(144, 0, note, 0)
         controller.padmode = CHORDS
         controller.note_off()
+        refresh_chords()
+        print("Chords:")
         device.midiOutMsg(176, 0, 84, 127)
         device.midiOutMsg(176, 0, controller.active_chordset + 100, 44)
         event.handled = True
@@ -592,7 +606,7 @@ def OnControlChange(event):
         controller.padmode = OMNI
         controller.note_off()
         refresh_channels()
-        print("Pad Mode: " + str(controller.channels))
+        print("Pad Mode")
         device.midiOutMsg(176, 0, controller.channels + 100, White3)
         event.handled = True
         return
@@ -606,6 +620,8 @@ def OnControlChange(event):
         device.midiOutMsg(176, 0, 82, 127)
         controller.padmode = KEYBOARD
         controller.note_off()
+        refresh_keyboard()
+        print("Keyboard:")
         device.midiOutMsg(176, 0, cs.groups.index(controller.current_group) + 100, 4)
         event.handled = True
         return
@@ -1320,14 +1336,14 @@ def OnNoteOn(event):
                 channels.midiNoteOn(channels.selectedChannel(), realnote, event.data2)
             else:
                 channels.midiNoteOn(channels.selectedChannel(), realnote, controller.fixedvelocityvalue)
-            device.midiOutMsg(144, 0, event.data1, Red1)
+            device.midiOutMsg(144, 0, event.data1, KEYBOARD_HIGHLIGHTED)
             event.handled = True
             return
         else:
             if realnote in controller.last_triggered:
                 controller.last_triggered.remove(realnote)
             channels.midiNoteOn(channels.selectedChannel(), realnote, 0)
-            device.midiOutMsg(144, 0, event.data1, 0)
+            device.midiOutMsg(144, 0, event.data1, KEYBOARD_COLOR)
             event.handled = True
             return
     elif controller.padmode == CHORDS:
@@ -1342,7 +1358,7 @@ def OnNoteOn(event):
                     controller.last_triggered.append(realnote)
                 else:
                     controller.last_triggered.append(realnote)
-            device.midiOutMsg(144, 0, event.data1, Blue1)
+            device.midiOutMsg(144, 0, event.data1, CHORDS_HIGHLIGHTED)
             event.handled = True
             return
         else:
@@ -1352,7 +1368,7 @@ def OnNoteOn(event):
                     controller.last_triggered.remove(realnote)
                 if realnote not in controller.last_triggered:
                     channels.midiNoteOn(channels.selectedChannel(), realnote, 0)
-            device.midiOutMsg(144, 0, event.data1, 0)
+            device.midiOutMsg(144, 0, event.data1, CHORDS_COLOR)
             event.handled = True
             return
     elif controller.padmode == STEP and event.data2 != 0:
