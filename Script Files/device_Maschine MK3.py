@@ -95,14 +95,20 @@ White3 = 71
 
 # Plugin and channel color in OMNI/PAD mode, feel free to change these with any others from the list
 
-PLUGIN_COLOR = Violet1
-PLUGIN_HIGHLIGHTED = Violet2
-CHANNEL_COLOR = Green0
-CHANNEL_HIGHLIGHTED = Green2
-CHORDS_COLOR = Cyan1
+ChannelCoding = {
+    0:  {"name": "Sampler",     "color": Green0,    "highlight": Green2},
+    1:  {"name": "Hybrid",      "color": Blue1,     "highlight": Blue2},
+    2:  {"name": "GenPlug",     "color": Violet1,   "highlight": Violet2},
+    3:  {"name": "Layer",       "color": Mint1,     "highlight": Mint2},
+    4:  {"name": "AudioClip",   "color": Magenta1,  "highlight": Magenta3},
+    5:  {"name": "AutoClip",    "color": Fuchsia0,  "highlight": Fuchsia2}
+    
+}
+
+CHORDS_COLOR = Cyan2
 CHORDS_HIGHLIGHTED = Cyan3
-KEYBOARD_COLOR = Lime1
-KEYBOARD_HIGHLIGHTED = Lime3
+KEYBOARD_COLOR = Mint2
+KEYBOARD_HIGHLIGHTED = Mint3
 
 # reverse engineered codes for channel rack colors
 WHITE = -1
@@ -274,23 +280,19 @@ def update_mixer_values():
     return
 
 def refresh_channels():
-    for channel in range(0, 17):
-        device.midiOutMsg(144, 0, channel, 0)
     lower_channel = controller.channels * 16
+    for channel in range(lower_channel, lower_channel + 17):
+        device.midiOutMsg(144, 0, channel, 0)
+
+    print(channels.getChannelName(0))
+
     for channel in range(lower_channel, channels.channelCount()):
-        index = channel - (controller.channels * 16)
-        if plugins.isValid(channel):
-            device.midiOutMsg(144, 0, index, PLUGIN_COLOR)
-        else:
-            device.midiOutMsg(144, 0, index, CHANNEL_COLOR)
-        if index == 16:
-            break
+        device.midiOutMsg(144, 0, channel, ChannelCoding[channels.getChannelType(channel)]['color'])
+
     if channels.selectedChannel() in range(lower_channel, channels.channelCount()):
-        channel = channels.selectedChannel() - (controller.channels * 16)
-        if plugins.isValid(channels.selectedChannel()):
-            device.midiOutMsg(144, 0, channel, PLUGIN_HIGHLIGHTED)
-        else:
-            device.midiOutMsg(144, 0, channel, CHANNEL_HIGHLIGHTED)
+        channel = channels.selectedChannel()
+        device.midiOutMsg(144, 0, channel, ChannelCoding[channels.getChannelType(channel)]['highlight'])
+
 
 def refresh_keyboard():
     for channel in range(16):
@@ -449,7 +451,9 @@ def OnRefresh(flag):
             refresh_chan_screen()
         update_led_state()
         return
-
+    if flag in [98560, 32768] and controller.padmode == OMNI:
+        refresh_channels()
+        return
     #print("Unhandled flag:" + str(flag))
 
 def OnMidiIn(event):
@@ -1293,31 +1297,22 @@ def OnNoteOn(event):
         return
     if controller.padmode == OMNI:
         realnote = cs.C5 + (controller.current_octave * 12) + controller.current_offset + 12
-        index = event.data1 + (controller.channels * 16)
+        index = event.data1# + (controller.channels * 16)
         if index < channels.channelCount():
             if event.data2 != 0:
                 lower_channel = controller.channels * 16
                 for channel in range(lower_channel, channels.channelCount()):
-                    index2 = channel - (controller.channels * 16)
-                    if plugins.isValid(channel):
-                        device.midiOutMsg(144, 0, index2, PLUGIN_COLOR)
-                    else:
-                        device.midiOutMsg(144, 0, index2, CHANNEL_COLOR)
-                    if index2 == 16:
-                        break
+                    device.midiOutMsg(144, 0, channel, ChannelCoding[channels.getChannelType(channel)]['color'])
 
                 if controller.fixedvelocity == 0:
-                    channels.midiNoteOn(index, realnote, event.data2)
+                    channels.midiNoteOn(channels.getChannelIndex(index), realnote, event.data2)
                 else:
-                    channels.midiNoteOn(index, realnote, controller.fixedvelocityvalue)
+                    channels.midiNoteOn(channels.getChannelIndex(index), realnote, controller.fixedvelocityvalue)
                 channels.selectOneChannel(index)
                 channel = channels.selectedChannel()
-                if plugins.isValid(channel):
-                    device.midiOutMsg(144, 0, event.data1, PLUGIN_HIGHLIGHTED)
-                else:
-                    device.midiOutMsg(144, 0, event.data1, CHANNEL_HIGHLIGHTED)
+                device.midiOutMsg(144, 0, event.data1, ChannelCoding[channels.getChannelType(channel)]['highlight'])
             else:
-                channels.midiNoteOn(index, realnote, 0)
+                channels.midiNoteOn(channels.getChannelIndex(index), realnote, 0)
         event.handled = True
         return
     elif controller.padmode == KEYBOARD:
