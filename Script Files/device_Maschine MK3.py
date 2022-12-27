@@ -101,8 +101,8 @@ ChannelCoding = {
     2:  {"name": "GenPlug",     "color": Violet1,   "highlight": Violet2},
     3:  {"name": "Layer",       "color": Mint1,     "highlight": Mint2},
     4:  {"name": "AudioClip",   "color": Magenta1,  "highlight": Magenta3},
-    5:  {"name": "AutoClip",    "color": Fuchsia0,  "highlight": Fuchsia2}
-    
+    5:  {"name": "AutoClip",    "color": Fuchsia0,  "highlight": Fuchsia2},
+    6:  {"name": "StepSeq",     "color": Black0,    "highlight": Purple3},
 }
 
 CHORDS_COLOR = Cyan2
@@ -332,12 +332,8 @@ def refresh_controls():
 def refresh_grid():
     lower_grid = controller.stepchannel * 16
     for gridbit in range(lower_grid, lower_grid + 16):
-        index = gridbit - lower_grid
-        device.midiOutMsg(144, 0, index, Black0)
-    for gridbit in range(lower_grid, lower_grid + 16):
-        index = gridbit - lower_grid
-        if channels.getGridBit(channels.selectedChannel(), gridbit) == 1:
-            device.midiOutMsg(144, 0, index, Purple3)
+        color = 'color' if channels.getGridBit(channels.selectedChannel(), gridbit) == 0 else 'highlight'        
+        device.midiOutMsg(144, 0, gridbit, ChannelCoding[6][color])
     return
 
 def init_leds():
@@ -395,7 +391,7 @@ def OnDeInit():
     return
 
 def OnRefresh(flag):
-    print("Refresh Flag:" + str(flag))
+    #print("Refresh Flag:" + str(flag))
     if flag == 256: # DIRTY LEDs
         update_led_state()
         return
@@ -419,7 +415,8 @@ def OnRefresh(flag):
                 refresh_chan_screen()
             return
         elif controller.padmode == STEP: # LOADING NEW CHANNELS (PLUGINS OR SAMPLES)
-            refresh_grid()
+            print('loading new channels 1')
+            #refresh_grid()
             if not controller.plugin_picker_active:
                 refresh_chan_screen()
             return
@@ -427,7 +424,8 @@ def OnRefresh(flag):
         if controller.padmode == OMNI:
             refresh_channels()
         if controller.padmode == STEP:
-            refresh_grid()
+            print('loading new channels 2')
+            #refresh_grid()
         if not controller.plugin_picker_active:
             refresh_chan_screen()
         update_led_state()
@@ -438,8 +436,7 @@ def OnRefresh(flag):
             refresh_chan_screen()
         return
     if flag == 1024 or flag == 1056 or flag == 1280 and controller.padmode == STEP: # changing steps
-        refresh_grid()
-        return
+        print('loading new channels 3')
     if flag == 295:
         if not controller.plugin_picker_active:
             refresh_chan_screen()
@@ -453,10 +450,8 @@ def OnRefresh(flag):
     if flag in [98560, 32768] and controller.padmode == OMNI:
         refresh_channels()
         return
-    #print("Unhandled flag:" + str(flag))
 
 def OnMidiIn(event):
-    # print_midi_info(event)
     return
 
 
@@ -651,6 +646,7 @@ def OnControlChange(event):
         controller.padmode = STEP
         controller.note_off()
         device.midiOutMsg(176, 0, controller.stepchannel + 100, Purple1)
+        print("loading new channels 4")
         refresh_grid()
         event.handled = True
         return
@@ -1350,12 +1346,11 @@ def OnNoteOn(event):
             return
     elif controller.padmode == STEP and event.data2 != 0:
         index = event_reduced + (controller.stepchannel * 16)
-        if channels.getGridBit(channels.selectedChannel(), index) == 0:
-            channels.setGridBit(channels.selectedChannel(), index, 1)
-        else:
-            channels.setGridBit(channels.selectedChannel(), index, 0)
+        selectedchannel = channels.selectedChannel()
+        isset = (1, 'highlight') if channels.getGridBit(selectedchannel, index) == 0 else (0, 'color')
+        channels.setGridBit(selectedchannel, index, isset[0])
+        device.midiOutMsg(144, 0, index, ChannelCoding[6][isset[1]])
         event.handled = True
-        refresh_grid()
         return
 
 # FOR THIS CONTROLLER NOTE OFF STATUS NEVER APPEARS, INSTEAD DATA2 WITH 0 VALUE TURNS NOTES OFF
