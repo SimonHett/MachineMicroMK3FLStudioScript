@@ -1296,12 +1296,10 @@ def OnNoteOn(event):
                 for channel in range(0, channels.channelCount()):
                     coloring = 'highlight' if channel == selectedchannel else 'color'                       
                     device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)][coloring])
-
-                
                 velocity = event.data2 if controller.fixedvelocity == 0 else controller.fixedvelocityvalue
-                channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, velocity)
             else:
-                channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, 0)
+                velocity = 0
+            channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, velocity)
         event.handled = True
         return
     elif controller.padmode == KEYBOARD:
