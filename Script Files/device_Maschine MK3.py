@@ -289,6 +289,27 @@ def refresh_channels():
         channel = channels.selectedChannel()
         device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)]['highlight'])
 
+def refresh_selected_page():
+    if controller.padmode == OMNI:
+        refresh_channels()
+    elif controller.padmode == CHORDS:
+        refresh_chords()
+    elif controller.padmode == KEYBOARD:
+        refresh_keyboard()
+    elif controller.padmode == STEP:
+        refresh_grid()
+
+def refresh_selector():
+    offset = 0
+    selected_index = 0
+    if controller.padmode == OMNI:
+        offset = 0
+        selected_index = 0
+    for channel in range(16):
+        color = Orange3 if channel == selected_index else Orange1
+        device.midiOutMsg(144, 0, channel + offset, color)
+
+
 
 def refresh_keyboard():
     for channel in range(16):
@@ -663,19 +684,23 @@ def OnControlChange(event):
         device.midiOutMsg(176, 0, 80, 0)
         event.handled = True
         return
-    if event.data1 == 85 and controller.shifting == 1 and event.data2 != 0:
-        arrangement.addAutoTimeMarker(arrangement.currentTime(True), "TRANSITION")
-        ui.setHintMsg("Marker Added")
-        event.handled = True
-        return
+    # if event.data1 == 85 and controller.shifting == 1 and event.data2 != 0:
+    #     arrangement.addAutoTimeMarker(arrangement.currentTime(True), "TRANSITION")
+    #     ui.setHintMsg("Marker Added")
+    #     event.handled = True
+    #     return
     if event.data1 == 85: # SELECT NEXT SCENE IN THE SONG
-        if event.data2 == 0:
-            device.midiOutMsg(176, 0, 85, 0)
-            event.handled = True
-            return
-        arrangement.jumpToMarker(1, 1)
-        device.midiOutMsg(176, 0, 85, 127)
-        event.handled = True
+        if event.data2 != 0:
+            refresh_selector()
+        else:
+            refresh_selected_page()
+        # if event.data2 == 0:
+        #     device.midiOutMsg(176, 0, 85, 0)
+        #     event.handled = True
+        #     return
+        # arrangement.jumpToMarker(1, 1)
+        # device.midiOutMsg(176, 0, 85, 127)
+        # event.handled = True
         return
     if event.data1 == 86: # ACTIVATE PATTERN SELECTION WHEN "PATTERN" BUTTON IS PRESSED
         if event.data2 == 0:                     # DEACTIVATE PATTERN SELECTION WHEN RELEASED
