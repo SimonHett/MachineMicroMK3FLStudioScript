@@ -137,49 +137,30 @@ G11 = 127
 # CHANGE THE NOTES INSIDE THE BRACKETS AS YOU PLEASE, YOU CAN EVEN ADD MORE THAN 4 NOTES FOR 7TH AND 9TH CHORDS!
 # JUST MAKE SURE THERE IS ALWAYS 16 CHORDS IN EACH CHORDSET!
 
-chrd1 = [ # Major 1
-    [C4, E5, G5, C6], #1
-    [E4, E5, G5, B5],
-    [F4, C5, F5, A5],
-    [G3, B4, D5, G5],
-    [A3, E3, A5, C6], #5
-    [E4, E5, A5, B5],
-    [G3, D5, A5, B5],
-    [D4, D5, F5, A5],
-    [F4, G5, A5, C6], #9
-    [F4, F5, A5, D6],
-    [G4, D5, G5, C6],
-    [G3, D5, G5, B5],
-    [C4, G5, C6, E6], #13
-    [E4, G5, B5, G5],
-    [F4, F5, A5, D6],
-    [G3, D5, G5, B5],
-]
-
-chrd2 = [ # Major 2
-    [C4, C5, E5, G5],
-    [B3, C5, E5, G5],
-    [A3, C5, E5, G5],
-    [G3, C5, E5, G5],
-    [F3, C5, G5, A5],
-    [C4, C5, F5, G5],
-    [A3, E5, G5, C6],
-    [E4, E5, G5, B5],
-    [F3, C5, F5, A5],
-    [G3, C5, F5, A5],
-    [G3, C5, D5, G5],
-    [G3, B4, E5, G5],
-    [C4, E5, A5, C6],
-    [B3, C5, E5, A5],
-    [D4, G5, B5, D6],
-    [C4, E5, G5, C6],
-]
-
-chrd3 = [ # Minor 1
-    [C4, C5, Ds5, G5],
+min1 = [ # MINOR 1
+    [C4, C5, Ds5, G5], #1
     [Ds4, C5, Ds5, G5],
-    [F4, C5, F5, Gs5],
+    [F4, C4, F5, Gs5],
     [G3, B4, D5, G5],
+    [Gs3, C5, Ds5, G5], #5
+    [Ds4, As4, Ds5, G5],
+    [G3, As4, D5, G5],
+    [As3, As4, D5, F5],
+    [F3, A4, C5, F5], #9
+    [Gs3, C5, F5, Gs5],
+    [G3, C5, Ds5, G5],
+    [G3, B4, D5, G5],
+    [F3, D4, F5, Gs5], #13
+    [D4, D5, F5, As5],
+    [D4, C5, D5, G5],
+    [C4, C5, F5, G5],
+]
+
+min2 = [ # MINOR 2
+    [C4, G4, C5, Ds5],
+    [F4, C5, Ds5, Gs5],
+    [As3, G4, C5, Ds5],
+    [Gs3, Gs4, C5, Ds5],
     [Gs3, C5, Ds5, G5],
     [Ds4, As4, Ds5, G5],
     [G3, As4, D5, G5],
@@ -188,29 +169,48 @@ chrd3 = [ # Minor 1
     [Gs3, C5, F5, Gs5],
     [G3, C5, Ds5, G5],
     [G3, B4, D5, G5],
-    [C4, Ds5, C5, Ds6],
-    [G3, As4, Ds5, G5],
-    [Gs3, C5, F5, Gs5],
-    [G3, C5, Ds5, G5],
+    [C4, C5, Ds5, G5],
+    [As3, F4, As5, D5],
+    [As3, D4, F5, As5],
+    [As3, D4, D5, G5],
 ]
 
-chrd4 = [ # Minor 3
-    [C4, G4, C5, Ds5],
-    [B3, G4, B4, Ds5],
-    [As3, G4, C5, Ds5],
-    [A3, C5, Ds5, G5],
-    [Gs3, C5, Ds5, G5],
-    [Ds4, As4, D5, G5],
-    [F3, C5, F5, Gs5],
-    [As3, D5, F5, Gs5],
+min3 = [ # SYNTHWAVE
+    [C4, G4, C5, D5, G5],
+    [C4, G4, As4, D5, F5],
+    [D4, A4, C5, D5, F5],
+    [D4, A5, C5, E5, G5],
+    [E4, G4, C5, D5, G5],
+    [D4, G4, As4, D5, F5],
+    [A3, A4, C5, D5, F5],
+    [A3, A4, C5, E5, G5],
+    [Ds4, Ds5, Fs5, As5],
+    [Ds4, Cs5, F5, Gs5],
+    [Cs4, Cs5, F5, Gs5],
+    [Ds4, F5, Gs5, Cs6],
+    [Cs4, F5, Gs5, Cs6],
+    [C4, Ds5, Gs5, C6],
+    [C4, Ds5, G5, As5],
+    [As3, D4, G5, As5],
+]
+
+min4 = [ # EPIC
+    [G3, D4, G4, As4],
+    [F3, C4, F4, A4],
+    [Ds3, Ds4, G4, As4],
+    [As3, F4, As4, D5],
+    [D3, A3, D4, F4],
+    [C3, G3, C4, Ds4],
+    [F3, C4, F4, A4],
+    [G3, D4, G4, As4],
     [C4, C5, Ds5, G5],
-    [As3, C5, D5, F5],
-    [Gs3, As4, C5, Ds5],
-    [G3, C5, D5, F5],
-    [C4, As4, Ds5, G5],
-    [Ds4, C5, Ds5, As5],
-    [F4, Ds5, G5, C6],
-    [D4, D5, F5, As5],
+    [C4, C5, Ds5, G5],
+    [C4, C5, Ds5, G5],
+    [C4, C5, Ds5, G5],
+    [C4, C5, Ds5, G5],
+    [C4, C5, Ds5, G5],
+    [C4, C5, Ds5, G5],
+    [C4, C5, Ds5, G5],
 ]
 
 maj1 = [
@@ -290,7 +290,7 @@ maj4 = [
 ]
 
 # DON'T CHANGE THIS!
-chdSet = [chrd1, chrd2, chrd3, chrd4, maj1, maj2, maj3, maj4]
+chdSet = [min1, min2, min3, min4, maj1, maj2, maj3, maj4]
 
 #---------------------------------------------------------------------------------------------------------
 #   GROUPS
