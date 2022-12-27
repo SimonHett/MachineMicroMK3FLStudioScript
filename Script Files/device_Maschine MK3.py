@@ -1297,9 +1297,9 @@ def OnNoteOn(event):
                     coloring = 'highlight' if channel == selectedchannel else 'color'                       
                     device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)][coloring])
 
-                if controller.fixedvelocity == 0:
-                    velocity = event.data2 if controller.fixedvelocity == 0 else controller.fixedvelocity
-                    channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, velocity)
+                
+                velocity = event.data2 if controller.fixedvelocity == 0 else controller.fixedvelocityvalue
+                channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, velocity)
             else:
                 channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, 0)
         event.handled = True
