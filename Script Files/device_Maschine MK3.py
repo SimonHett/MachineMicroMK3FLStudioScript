@@ -194,10 +194,8 @@ class Controller:
         for button in range(49, 53):
             if data1 != button:
                 device.midiOutMsg(176, 0, button, 0)
-                # print("Turning off everything else" + str(button) + " The channel is:" + str(channel))
             else:
                 device.midiOutMsg(176, 0, button, state)
-                # print("Handling the pressed button" + str(button) + " The channel is:" + str(channel))
 
     def update_maschine_encoder(selfself, data1, state):  # toggles LEDs between volume, swing and tempo
         for button in range(44, 47):
@@ -284,8 +282,6 @@ def refresh_channels():
     for channel in range(lower_channel, lower_channel + 17):
         device.midiOutMsg(144, 0, channel, 0)
 
-    print(channels.getChannelName(0))
-
     for channel in range(0, channels.channelCount()):
         device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)]['color'])
 
@@ -303,19 +299,22 @@ def refresh_chords():
         device.midiOutMsg(144, 0, channel + 16*controller.active_chordset, CHORDS_COLOR)
 
 def refresh_chan_screen():
-    # refresh channel number
-    device.midiOutMsg(176, 0, 74, channels.selectedChannel())
-    # refresh offset volume
-    id = midi.REC_Chan_OfsVol + channels.getRecEventId(channels.selectedChannel())
-    value = channels.processRECEvent(id, 0, midi.REC_GetValue)
-    device.midiOutMsg(176, 0, 75, round((value/25600) * 127) - 1)
-    # refresh offset modx
-    id = midi.REC_Chan_OfsFCut + channels.getRecEventId(channels.selectedChannel())
-    value = general.processRECEvent(id, 0, midi.REC_GetValue)
-    if -12 < value < 12:
-        value = 0
-    #print(value)
-    device.midiOutMsg(176, 0, 76, round(((value + 256) / 512) * 127) - 1)
+    try:
+        # refresh channel number
+        device.midiOutMsg(176, 0, 74, channels.selectedChannel())
+        # refresh offset volume
+        id = midi.REC_Chan_OfsVol + channels.getRecEventId(channels.selectedChannel())
+        value = channels.processRECEvent(id, 0, midi.REC_GetValue)
+        device.midiOutMsg(176, 0, 75, round((value/25600) * 127) - 1)
+        # refresh offset modx
+        id = midi.REC_Chan_OfsFCut + channels.getRecEventId(channels.selectedChannel())
+        value = general.processRECEvent(id, 0, midi.REC_GetValue)
+        if -12 < value < 12:
+            value = 0
+        #print(value)
+        device.midiOutMsg(176, 0, 76, round(((value + 256) / 512) * 127) - 1)
+    except Exception as ex:
+        print("exception: " + str(ex))
     return
 
 def refresh_controls():
@@ -621,7 +620,7 @@ def OnControlChange(event):
         ui.setFocused(midi.widChannelRack)
         controller.note_off()
         refresh_channels()
-        print("Pad Mode")
+        print("Pad Mode:")
         device.midiOutMsg(176, 0, controller.channels + 100, White3)
         event.handled = True
         return
@@ -648,6 +647,7 @@ def OnControlChange(event):
         for note in range(0, 16):
             device.midiOutMsg(144, 0, note, 0)
         device.midiOutMsg(176, 0, 83, 127)
+        print("Step:")
         controller.padmode = STEP
         controller.note_off()
         device.midiOutMsg(176, 0, controller.stepchannel + 100, Purple1)
@@ -1227,52 +1227,30 @@ def OnControlChange(event):
 # --------------------------------------------------------------------------------------------------------
 def CheckPageChange(event):
     range_data = (event.data1 // 16)
-    if controller.channels != range_data:  
-        controller.channels = range_data
-        controller.current_group = cs.groups[range_data]
-        controller.active_chordset = range_data
-        controller.stepchannel = range_data
-    # for group in range(100, 108):
-    #     device.midiOutMsg(176, 0, group, 0)
-    # for channel in range(0, 16):
-    #     device.midiOutMsg(144, 0, channel, 0)
+    if event.data2 == 0 and range_data != controller.channels:
+        print("Controller Page Changed: " + str(range_data))
+        controller.channels = range_data                    #omni
+        controller.current_group = cs.groups[range_data]    #keyboard
+        controller.active_chordset = range_data             #chords
+        controller.stepchannel = range_data                 #step
+        event.handled = True
 
-    if controller.padmode == OMNI:
-        if controller.channels != range_data:      
-            # ui.showWindow(midi.widChannelRack)
-            controller.channels = range_data
-            # print("Controller Channel Changed: " + str(range_data + 1))
-            # controller.note_off()
-            # refresh_channels()
-            # event.handled = True
-            pass
-
-    elif controller.padmode == KEYBOARD:
-        if cs.groups.index(controller.current_group) != range_data:
-            controller.current_group = cs.groups[range_data]
-            print("Controller Group Changed: " + str(range_data + 1))
+        if controller.padmode == KEYBOARD:
             controller.note_off()
             refresh_keyboard()
-            event.handled = True
 
-    elif controller.padmode == CHORDS:
-        if controller.active_chordset != range_data:
-            controller.active_chordset = range_data
-            print("Controller Chordset Changed: " + str(range_data + 1))
+        if controller.padmode == CHORDS:
             controller.note_off()
             refresh_chords()
-            event.handled = True
 
-    elif controller.padmode == STEP:
-        if controller.stepchannel != range_data:
-            controller.stepchannel = range_data
-            print("Controller stepchannel Changed: " + str(range_data + 1))
+        if controller.padmode == STEP:
             refresh_grid()
-            event.handled = True
     return
 
+
+
 def OnNoteOn(event): 
-    print("msg: " + str(event.data1) + ' - ' + str(event.data2))
+    #print("msg: " + str(event.data1) + ' - ' + str(event.data2))
     CheckPageChange(event)
     event_reduced = event.data1 % 16
 
@@ -1378,10 +1356,10 @@ def OnNoteOn(event):
         index = event_reduced + (controller.stepchannel * 16)
         if channels.getGridBit(channels.selectedChannel(), index) == 0:
             channels.setGridBit(channels.selectedChannel(), index, 1)
-            event.handled = True
-            return
-        channels.setGridBit(channels.selectedChannel(), index, 0)
+        else:
+            channels.setGridBit(channels.selectedChannel(), index, 0)
         event.handled = True
+        refresh_grid()
         return
 
 # FOR THIS CONTROLLER NOTE OFF STATUS NEVER APPEARS, INSTEAD DATA2 WITH 0 VALUE TURNS NOTES OFF
