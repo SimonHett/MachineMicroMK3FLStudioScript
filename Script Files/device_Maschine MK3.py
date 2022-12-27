@@ -1286,22 +1286,20 @@ def OnNoteOn(event):
         event.handled = True
         return
     if controller.padmode == OMNI:
-        realnote = cs.C5 + (controller.current_octave * 12) + controller.current_offset + 12
-        index = event_reduced#event.data1# + (controller.channels * 16)
-        if index < channels.channelCount():
+        if event_reduced < channels.channelCount():
+            channels.selectOneChannel(event_reduced)
+            selectedchannel = channels.selectedChannel()
+            realnote = cs.C6
+            realnote += (controller.current_octave * 12) + controller.current_offset if channels.getChannelType(selectedchannel) != 0 else 0
             if event.data2 != 0:
                 lower_channel = controller.channels * 16
-                
                 for channel in range(0, channels.channelCount()):
-                    device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)]['color'])
+                    coloring = 'highlight' if channel == selectedchannel else 'color'                       
+                    device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)][coloring])
 
                 if controller.fixedvelocity == 0:
-                    channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, event.data2)
-                else:
-                    channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, controller.fixedvelocityvalue)
-                channels.selectOneChannel(event_reduced)
-                channel = channels.selectedChannel()
-                device.midiOutMsg(144, 0, event.data1, ChannelCoding[channels.getChannelType(channel)]['highlight'])
+                    velocity = event.data2 if controller.fixedvelocity == 0 else controller.fixedvelocity
+                    channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, velocity)
             else:
                 channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, 0)
         event.handled = True
