@@ -125,6 +125,12 @@ KEYBOARD = 1
 CHORDS = 2
 STEP = 3
 
+# modes for layer mode
+NONE = 0
+PAGE = 1
+OPTION = 2
+PATTERN = 3
+
 # modes for 4D encoder
 JOG = 0
 VOLUME = 1
@@ -165,12 +171,12 @@ class Controller:
         self.current_offset = 0
         self.last_triggered = []
         self.encoder = 0
-        self.active_chordset = 3
+        self.active_chordset = 0
         self.current_group = cs.groups[0]
         self.scale = ["C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"]
         self.program = 0
         self.padmode = OMNI
-        self.pattern = 0
+        self.overlaymode = NONE
         self.mute = 0
         self.channels = 0
         self.stepchannel = 0
@@ -179,7 +185,6 @@ class Controller:
         self.safe_notes = []
         self.selected_track = 0
         self.mixer_snap = 0
-        self.shifting = 0
         self.plugin_picker_active = 0
         self.msgbuffer = MessageBuffer(16)
         self.highlightcode = {
@@ -278,25 +283,76 @@ def update_mixer_values():
     return
 
 def refresh_channels():
+    if channels.channelCount() < controller.channels * 16:  #when changing filter group results in less channels than controller channels set
+        controller.channels = channels.channelCount() // 16
     lower_channel = controller.channels * 16
-    for channel in range(lower_channel, lower_channel + 17):
-        device.midiOutMsg(144, 0, channel, 0)
+    channelCount = channels.channelCount()
+    for channel in range(16):
+        if lower_channel + channel < channelCount:
+            channeltype = channels.getChannelType(lower_channel + channel)
+            color = ChannelCoding[channeltype]['highlight'] if (lower_channel + channel) == channels.selectedChannel() else ChannelCoding[channeltype]['color']
+        else:
+            color = Black0        
+        device.midiOutMsg(144, 0, channel, color)
 
-    for channel in range(0, channels.channelCount()):
-        device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)]['color'])
+def refresh_selected_page():
+    if controller.padmode == OMNI:
+        refresh_channels()
+    elif controller.padmode == CHORDS:
+        refresh_chords()
+    elif controller.padmode == KEYBOARD:
+        refresh_keyboard()
+    elif controller.padmode == STEP:
+        refresh_grid()
 
-    if channels.selectedChannel() in range(0, channels.channelCount()):
-        channel = channels.selectedChannel()
-        device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)]['highlight'])
+def refresh_selector():
+    selected_index = 0
+    maximum_selection = 16
+    if controller.padmode == OMNI:
+        selected_index = controller.channels
+        maximum_selection = ((channels.channelCount()-1) // 16) + 1
+    elif controller.padmode == KEYBOARD:        
+        selected_index = cs.groups.index(controller.current_group)  
+        maximum_selection = len(cs.groups)        
+    elif controller.padmode == CHORDS:
+        selected_index = controller.active_chordset
+        maximum_selection = len(cs.chdSet)
+    elif controller.padmode == STEP:
+        selected_index = controller.stepchannel
+    for channel in range(16):
+        color = Orange3 if channel == selected_index else Orange1
+        color = Black0 if channel >= maximum_selection else color
+        device.midiOutMsg(144, 0, channel, color)
 
+def refresh_patterns():
+    for pattern in range(0, 16):
+        color = Lime1 if pattern < patterns.patternCount() else Black0
+        color = Lime2 if patterns.isPatternSelected(pattern + 1) else color
+        color = Lime3 if pattern == patterns.patternCount() else color
+        device.midiOutMsg(144, 0, pattern, color)
+
+def refresh_options():
+    #Octave Buttons
+    button_id_on  = 14 if controller.current_octave < 0 else 15
+    button_id_off = 15 if controller.current_octave < 0 else 14              
+    device.midiOutMsg(144, 0, button_id_on, controller.highlightcode[abs(controller.current_octave)])
+    device.midiOutMsg(144, 0, button_id_off, Black0)
+    #Semitone Buttons
+    button_id_on  = 12 if controller.current_offset < 0 else 13
+    button_id_off = 13 if controller.current_offset < 0 else 12              
+    device.midiOutMsg(144, 0, button_id_on, 2 + abs(controller.current_offset*4))
+    device.midiOutMsg(144, 0, button_id_off, Black0)  
+    #Shortcut Buttons
+    for button in range(12):
+        device.midiOutMsg(144, 0, button, White1)  
 
 def refresh_keyboard():
     for channel in range(16):
-        device.midiOutMsg(144, 0, channel + 16*cs.groups.index(controller.current_group), KEYBOARD_COLOR)
+        device.midiOutMsg(144, 0, channel, KEYBOARD_COLOR)
 
 def refresh_chords():
     for channel in range(16):
-        device.midiOutMsg(144, 0, channel + 16*controller.active_chordset, CHORDS_COLOR)
+        device.midiOutMsg(144, 0, channel, CHORDS_COLOR)
 
 def refresh_chan_screen():
     try:
@@ -317,23 +373,11 @@ def refresh_chan_screen():
         print("exception: " + str(ex))
     return
 
-def refresh_controls():
-    #Octave Buttons
-    button_id_on  = 115 if controller.current_octave < 0 else 116
-    button_id_off = 116 if controller.current_octave < 0 else 115               
-    device.midiOutMsg(176, 0, button_id_on, controller.highlightcode[abs(controller.current_octave)])
-    device.midiOutMsg(176, 0, button_id_off, 0)
-    #Semitone Buttons
-    button_id_on  = 113 if controller.current_offset < 0 else 114
-    button_id_off = 114 if controller.current_offset < 0 else 113               
-    device.midiOutMsg(176, 0, button_id_on, 2 + abs(controller.current_offset*4))
-    device.midiOutMsg(176, 0, button_id_off, 0)    
-
 def refresh_grid():
     lower_grid = controller.stepchannel * 16
     for gridbit in range(lower_grid, lower_grid + 16):
         color = 'color' if channels.getGridBit(channels.selectedChannel(), gridbit) == 0 else 'highlight'        
-        device.midiOutMsg(144, 0, gridbit, ChannelCoding[6][color])
+        device.midiOutMsg(144, 0, gridbit - lower_grid, ChannelCoding[6][color])
     return
 
 def init_leds():
@@ -410,12 +454,11 @@ def OnRefresh(flag):
         return
     if flag == 359 or flag == 375: # LOADING NEW CHANNELS (PLUGINS OR SAMPLES)
         if controller.padmode == OMNI:
-            refresh_channels()
+            refresh_channels()            
             if not controller.plugin_picker_active:
                 refresh_chan_screen()
             return
         elif controller.padmode == STEP: # LOADING NEW CHANNELS (PLUGINS OR SAMPLES)
-            print('loading new channels 1')
             #refresh_grid()
             if not controller.plugin_picker_active:
                 refresh_chan_screen()
@@ -424,19 +467,18 @@ def OnRefresh(flag):
         if controller.padmode == OMNI:
             refresh_channels()
         if controller.padmode == STEP:
-            print('loading new channels 2')
-            #refresh_grid()
+            refresh_grid()
         if not controller.plugin_picker_active:
             refresh_chan_screen()
         update_led_state()
         return
     if flag == 311 and controller.padmode == OMNI: # DELETING CHANNELS
-        refresh_channels()
+        #refresh_channels()
         if not controller.plugin_picker_active:
             refresh_chan_screen()
         return
-    if flag == 1024 or flag == 1056 or flag == 1280 and controller.padmode == STEP: # changing steps
-        print('loading new channels 3')
+    # if flag == 1024 or flag == 1056 or flag == 1280 and controller.padmode == STEP: # changing steps
+    #     refresh_channels()
     if flag == 295:
         if not controller.plugin_picker_active:
             refresh_chan_screen()
@@ -535,7 +577,7 @@ def OnControlChange(event):
             device.midiOutMsg(176, 0, 57, 0)
         event.handled = True
         return
-    if event.data1 == 58 and controller.shifting == 1:
+    if event.data1 == 58 and controller.overlaymode == OPTION:
         if ui.isPrecountEnabled():
             transport.globalTransport(midi.FPT_CountDown, 1)
             ui.setHintMsg("Precount disabled")
@@ -595,6 +637,7 @@ def OnControlChange(event):
         for note in range(0, 16):
             device.midiOutMsg(144, 0, note, 0)
         controller.padmode = CHORDS
+        controller.overlaymode = NONE
         controller.note_off()
         refresh_chords()
         print("Chords:")
@@ -611,6 +654,7 @@ def OnControlChange(event):
             device.midiOutMsg(144, 0, note, 0)
         device.midiOutMsg(176, 0, 81, 127)
         controller.padmode = OMNI
+        controller.overlaymode = NONE
         ui.showWindow(midi.widChannelRack)
         ui.setFocused(midi.widChannelRack)
         controller.note_off()
@@ -628,6 +672,7 @@ def OnControlChange(event):
             device.midiOutMsg(144, 0, note, 0)
         device.midiOutMsg(176, 0, 82, 127)
         controller.padmode = KEYBOARD
+        controller.overlaymode = NONE
         controller.note_off()
         refresh_keyboard()
         print("Keyboard:")
@@ -644,6 +689,7 @@ def OnControlChange(event):
         device.midiOutMsg(176, 0, 83, 127)
         print("Step:")
         controller.padmode = STEP
+        controller.overlaymode = NONE
         controller.note_off()
         device.midiOutMsg(176, 0, controller.stepchannel + 100, Purple1)
         print("loading new channels 4")
@@ -663,36 +709,36 @@ def OnControlChange(event):
         device.midiOutMsg(176, 0, 80, 0)
         event.handled = True
         return
-    if event.data1 == 85 and controller.shifting == 1 and event.data2 != 0:
-        arrangement.addAutoTimeMarker(arrangement.currentTime(True), "TRANSITION")
-        ui.setHintMsg("Marker Added")
+    # if event.data1 == 85 and controller.overlaymode == OPTION and event.data2 != 0:
+    #     arrangement.addAutoTimeMarker(arrangement.currentTime(True), "TRANSITION")
+    #     ui.setHintMsg("Marker Added")
+    #     event.handled = True
+    #     return
+    if event.data1 == 85: #SELECT Page Overlay
+        if controller.overlaymode == PAGE:
+            controller.overlaymode = NONE
+            refresh_selected_page()
+        else:            
+            controller.overlaymode = PAGE
+            refresh_selector()
         event.handled = True
         return
-    if event.data1 == 85: # SELECT NEXT SCENE IN THE SONG
-        if event.data2 == 0:
-            device.midiOutMsg(176, 0, 85, 0)
-            event.handled = True
-            return
-        arrangement.jumpToMarker(1, 1)
-        device.midiOutMsg(176, 0, 85, 127)
-        event.handled = True
-        return
-    if event.data1 == 86: # ACTIVATE PATTERN SELECTION WHEN "PATTERN" BUTTON IS PRESSED
-        if event.data2 == 0:                     # DEACTIVATE PATTERN SELECTION WHEN RELEASED
-            for pattern in range(0, 16):
-                device.midiOutMsg(144, 0, pattern, 0)
-            controller.pattern = 0
-            device.midiOutMsg(176, 0, 86, 0)
-            if controller.padmode == OMNI:
-                refresh_channels()
-            event.handled = True
-            return
-        for pattern in range(0, 16):
-            device.midiOutMsg(144, 0, pattern, 0)
-        controller.pattern = 1
-        device.midiOutMsg(176, 0, 86, 127)
-        for pattern in range(0, patterns.patternCount()):
-            device.midiOutMsg(144, 0, pattern, Lime1)
+        # # SELECT NEXT SCENE IN THE SONG
+        # if event.data2 == 0:
+        #     device.midiOutMsg(176, 0, 85, 0)
+        #     event.handled = True
+        #     return
+        # arrangement.jumpToMarker(1, 1)
+        # device.midiOutMsg(176, 0, 85, 127)
+        # event.handled = True
+        
+    if event.data1 == 86: # SELECT Pattern Overlay
+        if controller.overlaymode == PATTERN:
+            controller.overlaymode = NONE
+            refresh_selected_page()
+        else:
+            controller.overlaymode = PATTERN
+            refresh_patterns()
         event.handled = True
         return
     if event.data1 == 87: # OPEN EVENT (PIANO ROLL)
@@ -704,11 +750,12 @@ def OnControlChange(event):
         event.handled = True
         return
     if event.data1 == 88: # HOLDING DOWN SHIFT ("VARIATION" BUTTON)
-        if event.data2 == 0:
-            controller.shifting = 0
-            event.handled = True
-            return
-        controller.shifting = 1
+        if controller.overlaymode == OPTION:
+            controller.overlaymode = NONE
+            refresh_selected_page()
+        else:
+            controller.overlaymode = OPTION
+            refresh_options()
         event.handled = True
         return
     if event.data1 == 89: # DUPLICATE
@@ -731,7 +778,7 @@ def OnControlChange(event):
         device.midiOutMsg(176, 0, 90, 127)
         event.handled = True
         return
-    if event.data1 == 91 and controller.shifting == 1:
+    if event.data1 == 91 and controller.overlaymode == OPTION:
         if event.data2 == 0:
             device.midiOutMsg(176, 0, 91, 0)
             event.handled = True
@@ -749,7 +796,7 @@ def OnControlChange(event):
         device.midiOutMsg(176, 0, 91, 0)
         event.handled = True
         return
-    if event.data1 == 92 and controller.shifting == 1: # SIMULATED CHOKE FUNCTION
+    if event.data1 == 92 and controller.overlaymode == OPTION: # SIMULATED CHOKE FUNCTION
         for channel in range(0, channels.channelCount()):
             for note in range(0, 128):
                 channels.midiNoteOn(channel, note, 0)
@@ -779,7 +826,7 @@ def OnControlChange(event):
             ui.setFocused(midi.widBrowser)
             event.handled = True
             return
-    if event.data1 == 40 and controller.shifting == 1:  # FILE Save button
+    if event.data1 == 40 and controller.overlaymode == OPTION:  # FILE Save button
         if event.data2 == 0:
             device.midiOutMsg(176, 0, event.data1, 0)
             event.handled = True
@@ -1084,54 +1131,7 @@ def OnControlChange(event):
             device.midiOutMsg(176, 0, event.data1, Purple1)
             event.handled = True
             return
-    # --------------------------------------------------------------------------------------------------------
-    #   OCTAVE SHIFTING
-    # --------------------------------------------------------------------------------------------------------
-    if event.data1 in [115, 116]:
-        if event.data1 == 115 and controller.current_octave >= -2:
-            if event.data2 != 0:
-                device.midiOutMsg(176, 0, event.data1, 127)
-                controller.current_octave -= 1
-        if event.data1 == 116 and controller.current_octave <= 2:
-            if event.data2 != 0:
-                device.midiOutMsg(176, 0, event.data1, 127)
-                controller.current_octave += 1
-        
-        if event.data2 != 0:
-            refresh_controls()
-            ui.setHintMsg("Current octave: " + str(controller.current_octave))
-            controller.note_off() 
-        event.handled = True
-        return
-    print("current_offset semitone: " + str(controller.current_offset))
-    if event.data1 in [113, 114]:
-        octave_changed = False
-        if event.data1 == 113 and controller.current_offset > -11:
-            if event.data2 != 0:
-                controller.current_offset -= 1
-        elif event.data1 == 113 and controller.current_octave >= -2:
-            if event.data2 != 0:
-                controller.current_offset = 0
-                controller.current_octave -= 1
-                octave_changed = True
-        if event.data1 == 114 and controller.current_offset < 11:
-            if event.data2 != 0:
-                controller.current_offset += 1
-        elif event.data1 == 114 and controller.current_octave <= 2:
-            if event.data2 != 0:
-                controller.current_offset = 0
-                controller.current_octave += 1
-                octave_changed = True
-        if event.data2 != 0:
-            refresh_controls()
-            ui.setHintMsg("Root note: " + controller.scale[controller.current_offset])
-            
-            controller.note_off() 
 
-        
-
-        event.handled = True
-        return
 # --------------------------------------------------------------------------------------------------------
 #   ROTARY WHEELS
 # --------------------------------------------------------------------------------------------------------
@@ -1221,137 +1221,169 @@ def OnControlChange(event):
 # --------------------------------------------------------------------------------------------------------
 #   NOTES
 # --------------------------------------------------------------------------------------------------------
-def CheckPageChange(event):
-    range_data = (event.data1 // 16)
-    if event.data2 == 0 and range_data != controller.channels:
-        print("Controller Page Changed: " + str(range_data))
-        controller.channels = range_data                    #omni
-        controller.current_group = cs.groups[range_data]    #keyboard
-        controller.active_chordset = range_data             #chords
-        controller.stepchannel = range_data                 #step
-        event.handled = True
-
-        if controller.padmode == KEYBOARD:
-            controller.note_off()
-            refresh_keyboard()
-
-        if controller.padmode == CHORDS:
-            controller.note_off()
-            refresh_chords()
-
-        if controller.padmode == STEP:
-            refresh_grid()
-    return
-
-
-
 def OnNoteOn(event): 
-    #print("msg: " + str(event.data1) + ' - ' + str(event.data2))
-    CheckPageChange(event)
-    event_reduced = event.data1 % 16
+    pad_id = event.data1 % 16
+    velocity = event.data2
 
-
-    if controller.shifting == 1 and event.data2 != 0:
-        if event_reduced == 0:
-            general.undoUp()
+    if controller.overlaymode == OPTION:
+        if pad_id in [14, 15] and velocity != 0: #Octave Shifting
+            if pad_id == 14 and controller.current_octave >= -2:
+                controller.current_octave -= 1
+            if pad_id == 15 and controller.current_octave <= 2:
+                controller.current_octave += 1     
+            refresh_options()
+            print("Octave: " + str(controller.current_octave))
+            ui.setHintMsg("Current octave: " + str(controller.current_octave))
+            controller.note_off() 
             event.handled = True
             return
-        if event_reduced == 1:
-            general.undoDown()
+
+        if pad_id in [12, 13] and velocity != 0: #Semitone Shifting
+            if pad_id == 12 and controller.current_offset > -11:
+                controller.current_offset -= 1
+            elif pad_id == 12 and controller.current_octave >= -2:
+                controller.current_offset = 0
+                controller.current_octave -= 1
+            if pad_id == 13 and controller.current_offset < 11:
+                controller.current_offset += 1
+            elif pad_id == 13 and controller.current_octave <= 2:
+                controller.current_offset = 0
+                controller.current_octave += 1
+            refresh_options()
+            print("Semitone: " + str(controller.current_offset))
+            ui.setHintMsg("Root note: " + controller.scale[controller.current_offset])
+            controller.note_off()        
             event.handled = True
             return
-    if controller.pattern == 1 and event.data2 != 0:
+
+        if pad_id in [0, 1] and velocity != 0: #Shortcuts
+            if pad_id == 0: #Undo
+                general.undoUp()
+                print("Undo")
+                ui.setHintMsg("Undo")
+            elif pad_id == 1: #Redo
+                general.undoDown()
+                ui.setHintMsg("Redo")
+                print("Redo")
+            controller.note_off()
+            event.handled = True
+            return 
+
+    elif controller.overlaymode == PATTERN:
         compare_pattern = patterns.patternCount() - 1
-        if event_reduced > compare_pattern:
+        if pad_id <= compare_pattern:
+            patterns.jumpToPattern(pad_id + 1)
+            refresh_patterns()
+            ui.setHintMsg("Select pattern: " + patterns.getPatternName(pad_id + 1))
+        elif pad_id == compare_pattern + 1:
             patterns.selectPattern(1)
-            patterns.findFirstNextEmptyPat(midi.FFNEP_DontPromptName)
-            device.midiOutMsg(144, 0, event.data1, 25)
-            event.handled = True
-            return
-        patterns.jumpToPattern(event_reduced + 1)
-        device.midiOutMsg(144, 0, event.data1, 25)
+            patterns.findFirstNextEmptyPat(midi.FFNEP_DontPromptName)  
+            refresh_patterns()   
+            ui.setHintMsg("Select pattern: " + patterns.getPatternName(pad_id + 1))  
+        controller.note_off() 
         event.handled = True
         return
-    if controller.pattern == 1 and event.data2 == 0:
-        compare_pattern = patterns.patternCount() - 1
-        if event_reduced > compare_pattern:
-            device.midiOutMsg(144, 0, event.data1, 0)
-            event.handled = True
-            return
-        device.midiOutMsg(144, 0, event.data1, Lime1)
+    
+    elif controller.overlaymode == PAGE:
+        if controller.padmode == OMNI and pad_id < ((channels.channelCount()-1) // 16) + 1:
+            controller.channels = pad_id
+            ui.setHintMsg("Select Padpage: " + str(pad_id + 1))
+            refresh_selector()
+        elif controller.padmode == KEYBOARD and pad_id < len(cs.groups): 
+            controller.current_group = cs.groups[pad_id]      
+            ui.setHintMsg("Select Keyboardpage: " + str(pad_id + 1)) 
+            refresh_selector()  
+        elif controller.padmode == CHORDS and pad_id < len(cs.chdSet):
+            controller.active_chordset = pad_id
+            ui.setHintMsg("Select Chordpage: " + str(pad_id + 1))
+            refresh_selector()
+        elif controller.padmode == STEP:
+            controller.stepchannel = pad_id
+            ui.setHintMsg("Select Steppage: " + str(pad_id + 1))
+            refresh_selector()
+        
+        
         event.handled = True
+        controller.note_off()
         return
-    if controller.padmode == OMNI:
-        if event_reduced < channels.channelCount():
-            channels.selectOneChannel(event_reduced)
-            selectedchannel = channels.selectedChannel()
-            realnote = cs.C6
-            realnote += (controller.current_octave * 12) + controller.current_offset if channels.getChannelType(selectedchannel) != 0 else 0
-            if event.data2 != 0:
-                lower_channel = controller.channels * 16
-                for channel in range(0, channels.channelCount()):
-                    coloring = 'highlight' if channel == selectedchannel else 'color'                       
-                    device.midiOutMsg(144, 0, channel + lower_channel, ChannelCoding[channels.getChannelType(channel)][coloring])
-                velocity = event.data2 if controller.fixedvelocity == 0 else controller.fixedvelocityvalue
-            else:
-                velocity = 0
-            channels.midiNoteOn(channels.getChannelIndex(event_reduced), realnote, velocity)
-        event.handled = True
-        return
-    elif controller.padmode == KEYBOARD:
-        realnote = controller.current_group[event_reduced] + (controller.current_octave * 12) + controller.current_offset + 12
-        realindex = channels.getChannelIndex(channels.selectedChannel())
-        if event.data2 != 0:
-            controller.last_triggered.append(realnote)
-            if controller.fixedvelocity == 0:                
-                channels.midiNoteOn(realindex, realnote, event.data2)
-            else:
-                channels.midiNoteOn(realindex, realnote, controller.fixedvelocityvalue)
-            device.midiOutMsg(144, 0, event.data1, KEYBOARD_HIGHLIGHTED)
-            event.handled = True
-            return
-        else:
-            if realnote in controller.last_triggered:
-                controller.last_triggered.remove(realnote)
-            channels.midiNoteOn(realindex, realnote, 0)
-            device.midiOutMsg(144, 0, event.data1, KEYBOARD_COLOR)
-            event.handled = True
-            return
-    elif controller.padmode == CHORDS:
-        realindex = channels.getChannelIndex(channels.selectedChannel())
-        if event.data2 != 0:
-            for note in cs.chdSet[controller.active_chordset][event_reduced]:
-                
-                realnote = note + (controller.current_octave * 12) + controller.current_offset + 12
-                if realnote not in controller.last_triggered:
-                    if controller.fixedvelocity == 0:
-                        channels.midiNoteOn(realindex, realnote, event.data2)
-                    else:
-                        channels.midiNoteOn(realindex, realnote, controller.fixedvelocityvalue)
-                    controller.last_triggered.append(realnote)
+
+    elif controller.overlaymode == NONE: #regular note mode
+        
+        if controller.padmode == OMNI:
+            lower_channel = controller.channels * 16
+            if pad_id < channels.channelCount():
+                channels.selectOneChannel(lower_channel + pad_id)
+                selectedchannel = channels.selectedChannel()                
+                realnote = cs.C6
+                realnote += (controller.current_octave * 12) + controller.current_offset if channels.getChannelType(selectedchannel) != 0 else 0
+                if velocity != 0:                    
+                    for channel in range(lower_channel, channels.channelCount()):
+                        color = 'highlight' if channel == selectedchannel else 'color'                       
+                        device.midiOutMsg(144, 0, channel - lower_channel, ChannelCoding[channels.getChannelType(channel)][color])
+                    velocity = velocity if controller.fixedvelocity == 0 else controller.fixedvelocityvalue
                 else:
-                    controller.last_triggered.append(realnote)
-            device.midiOutMsg(144, 0, event.data1, CHORDS_HIGHLIGHTED)
+                    velocity = 0
+                channels.midiNoteOn(channels.getChannelIndex(lower_channel + pad_id), realnote, velocity)
             event.handled = True
             return
-        else:
-            for note in cs.chdSet[controller.active_chordset][event_reduced]:
-                realnote = note + (controller.current_octave * 12) + controller.current_offset + 12
+        
+        elif controller.padmode == KEYBOARD:
+            realnote = controller.current_group[pad_id] + (controller.current_octave * 12) + controller.current_offset + 12
+            realindex = channels.getChannelIndex(channels.selectedChannel())
+            if velocity != 0:
+                controller.last_triggered.append(realnote)
+                if controller.fixedvelocity == 0:                
+                    channels.midiNoteOn(realindex, realnote, velocity)
+                else:
+                    channels.midiNoteOn(realindex, realnote, controller.fixedvelocityvalue)
+                device.midiOutMsg(144, 0, pad_id, KEYBOARD_HIGHLIGHTED)
+                event.handled = True
+                return
+            else:
                 if realnote in controller.last_triggered:
                     controller.last_triggered.remove(realnote)
-                if realnote not in controller.last_triggered:
-                    channels.midiNoteOn(realindex, realnote, 0)
-            device.midiOutMsg(144, 0, event.data1, CHORDS_COLOR)
+                channels.midiNoteOn(realindex, realnote, 0)
+                device.midiOutMsg(144, 0, pad_id, KEYBOARD_COLOR)
+                event.handled = True
+                return
+        
+        elif controller.padmode == CHORDS:
+            realindex = channels.getChannelIndex(channels.selectedChannel())
+            if velocity != 0:
+                for note in cs.chdSet[controller.active_chordset][pad_id]:
+                    
+                    realnote = note + (controller.current_octave * 12) + controller.current_offset + 12
+                    if realnote not in controller.last_triggered:
+                        if controller.fixedvelocity == 0:
+                            channels.midiNoteOn(realindex, realnote, velocity)
+                        else:
+                            channels.midiNoteOn(realindex, realnote, controller.fixedvelocityvalue)
+                        controller.last_triggered.append(realnote)
+                    else:
+                        controller.last_triggered.append(realnote)
+                device.midiOutMsg(144, 0, pad_id, CHORDS_HIGHLIGHTED)
+                event.handled = True
+                return
+            else:
+                for note in cs.chdSet[controller.active_chordset][pad_id]:
+                    realnote = note + (controller.current_octave * 12) + controller.current_offset + 12
+                    if realnote in controller.last_triggered:
+                        controller.last_triggered.remove(realnote)
+                    if realnote not in controller.last_triggered:
+                        channels.midiNoteOn(realindex, realnote, 0)
+                device.midiOutMsg(144, 0, pad_id, CHORDS_COLOR)
+                event.handled = True
+                return
+        
+        elif controller.padmode == STEP:
+            if velocity != 0:
+                index = pad_id + (controller.stepchannel * 16)
+                selectedchannel = channels.selectedChannel()
+                isset = (1, 'highlight') if channels.getGridBit(selectedchannel, index) == 0 else (0, 'color')
+                channels.setGridBit(selectedchannel, index, isset[0])
+                device.midiOutMsg(144, 0, pad_id, ChannelCoding[6][isset[1]])
             event.handled = True
             return
-    elif controller.padmode == STEP and event.data2 != 0:
-        index = event_reduced + (controller.stepchannel * 16)
-        selectedchannel = channels.selectedChannel()
-        isset = (1, 'highlight') if channels.getGridBit(selectedchannel, index) == 0 else (0, 'color')
-        channels.setGridBit(selectedchannel, index, isset[0])
-        device.midiOutMsg(144, 0, index, ChannelCoding[6][isset[1]])
-        event.handled = True
-        return
 
 # FOR THIS CONTROLLER NOTE OFF STATUS NEVER APPEARS, INSTEAD DATA2 WITH 0 VALUE TURNS NOTES OFF
 def OnNoteOff(event):
