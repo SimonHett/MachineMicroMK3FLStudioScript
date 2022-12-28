@@ -778,39 +778,16 @@ def OnControlChange(event):
         device.midiOutMsg(176, 0, 90, 127)
         event.handled = True
         return
-    if event.data1 == 91 and controller.overlaymode == OPTION:
-        if event.data2 == 0:
-            device.midiOutMsg(176, 0, 91, 0)
-            event.handled = True
-            return
-        mixer.soloTrack(mixer.trackNumber(), -1, fxSoloModeWithSourceTracks)
-        device.midiOutMsg(176, 0, 91, 0)
-        event.handled = True
-        return
     if event.data1 == 91:
-        if event.data2 == 0:
-            device.midiOutMsg(176, 0, 91, 0)
-            event.handled = True
-            return
-        mixer.soloTrack(mixer.trackNumber(), -1, fxSoloModeWithDestTracks)
-        device.midiOutMsg(176, 0, 91, 0)
+        channels.soloChannel(channels.selectedChannel())        
         event.handled = True
         return
-    if event.data1 == 92 and controller.overlaymode == OPTION: # SIMULATED CHOKE FUNCTION
-        for channel in range(0, channels.channelCount()):
-            for note in range(0, 128):
-                channels.midiNoteOn(channel, note, 0)
-        event.handled = True
-        return
+
     if event.data1 == 92: # MUTE MIXER TRACK
-        if event.data2 == 0:
-            device.midiOutMsg(176, 0, 92, 0)
-            event.handled = True
-            return
-        mixer.muteTrack(mixer.trackNumber())
-        device.midiOutMsg(176, 0, 92, 127)
+        channels.muteChannel(channels.selectedChannel())
         event.handled = True
         return
+
     if event.data1 == 39 and event.data2 != 0: # SAMPLING
         # if not :
             
